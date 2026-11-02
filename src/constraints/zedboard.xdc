@@ -9,21 +9,30 @@ set_property IOSTANDARD  LVCMOS33 [get_ports rst]
 
 # PMOD Header JA – Keypad columns (active LOW outputs)
 # JA1=col[3]  JA2=col[2]  JA3=col[1]  JA4=col[0]
-set_property PACKAGE_PIN AA9      [get_ports {col[0]}]
-set_property PACKAGE_PIN Y10      [get_ports {col[1]}]
-set_property PACKAGE_PIN AA11     [get_ports {col[2]}]
-set_property PACKAGE_PIN Y11      [get_ports {col[3]}]
-set_property IOSTANDARD  LVCMOS33 [get_ports {col[*]}]
+set_property PACKAGE_PIN AA9      [get_ports {kp_col[0]}]
+set_property PACKAGE_PIN Y10      [get_ports {kp_col[1]}]
+set_property PACKAGE_PIN AA11     [get_ports {kp_col[2]}]
+set_property PACKAGE_PIN Y11      [get_ports {kp_col[3]}]
+set_property IOSTANDARD  LVCMOS33 [get_ports {kp_col[*]}]
 
 # PMOD Header JA – Keypad rows (active LOW, inputs with pull-ups)
 # JA7=row[3]  JA8=row[2]  JA9=row[1]  JA10=row[0]
-set_property PACKAGE_PIN AA8      [get_ports {row[0]}]
-set_property PACKAGE_PIN AB9      [get_ports {row[1]}]
-set_property PACKAGE_PIN AB10     [get_ports {row[2]}]
-set_property PACKAGE_PIN AB11     [get_ports {row[3]}]
-set_property IOSTANDARD  LVCMOS33 [get_ports {row[*]}]
-set_property PULLUP      true     [get_ports {row[*]}]
+set_property PACKAGE_PIN AA8      [get_ports {kp_row[0]}]
+set_property PACKAGE_PIN AB9      [get_ports {kp_row[1]}]
+set_property PACKAGE_PIN AB10     [get_ports {kp_row[2]}]
+set_property PACKAGE_PIN AB11     [get_ports {kp_row[3]}]
+set_property IOSTANDARD  LVCMOS33 [get_ports {kp_row[*]}]
+set_property PULLUP      true     [get_ports {kp_row[*]}]
+
+# PMOD Header JD – Microphone SPI interface
+# JD1=mic_cs_n  JD3=mic_miso  JD4=mic_sclk
+set_property PACKAGE_PIN W12  [get_ports mic_cs_n]
+set_property IOSTANDARD LVCMOS33 [get_ports mic_cs_n]
+set_property PACKAGE_PIN V10  [get_ports mic_miso]
+set_property IOSTANDARD LVCMOS33 [get_ports mic_miso]
+set_property PACKAGE_PIN W8   [get_ports mic_sclk]
+set_property IOSTANDARD LVCMOS33 [get_ports mic_sclk]
 
 # Timing exceptions for async inputs handled by synchronisers in RTL
-set_false_path -from [get_ports {row[*]}]
+set_false_path -from [get_ports {kp_row[*]}]
 set_false_path -from [get_ports rst]
