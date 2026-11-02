@@ -8,7 +8,7 @@ module top(
     input  wire [3:0] row,
 
     // PMOD JC – Digilent PMOD DA2
-    // PMOD JE – Digilent PMOD Mic
+    // PMOD JD – Digilent PMOD Mic
 )
 
 endmodule
