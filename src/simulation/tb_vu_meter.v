@@ -3,6 +3,7 @@
 module tb_vu_meter();
     // Inputs
     reg clk;
+    reg rst;
     reg sample_tick;
     reg [11:0] audio_data;
 
@@ -12,6 +13,7 @@ module tb_vu_meter();
     // Instantiate the Unit Under Test (UUT)
     vu_meter uut (
         .clk(clk),
+        .rst(rst),
         .sample_tick(sample_tick),
         .audio_data(audio_data),
         .vu_level(vu_level)
@@ -59,6 +61,12 @@ module tb_vu_meter();
         $dumpfile("tb_vu_meter.vcd");
         $dumpvars(0, tb_vu_meter);
 
+        // Reset
+        rst = 1;
+        audio_data = 12'd2048;
+        #100;
+        rst = 0;
+
         // Initialize inputs to quiet room baseline (DC Offset = 2048)
         audio_data = 12'd2048;
         
@@ -92,7 +100,7 @@ module tb_vu_meter();
         // This should light up vu_level[0], [1], and [2] (>64)
         @(negedge clk);
         audio_data = 12'd1978;
-        wait_ticks(1);
+        wait_ticks(1); 
         $display("Time: %0t | Status: Negative Peak applied | VU Level: %b", $time, vu_level);
 
         // Return to silence and observe decay
