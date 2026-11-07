@@ -34,8 +34,7 @@ module top(
         end
     end
 
-    wire [11:0] mic_audio_data; // 12-bit audio sample
-    wire [11:0] ac_audio;       // 12-bit audio sample with DC offset removed
+    wire [11:0] mic_audio_data;     // 12-bit audio sample
 
     // Instantiate SPI Controller
     pmod_mic3_spi spi_ctrl (
@@ -45,20 +44,37 @@ module top(
         .sclk(mic_sclk),
         .miso(mic_miso),
         .dc_audio_data(mic_audio_data),
-        .ac_audio_data(ac_audio)
+    );
+
+    wire [7:0] vu_level;            // 8-bit audio level output from VU meter
+
+    // Instantiate VU Meter
+    vu_meter vu_meter_inst (
+        .clk(clk_32mhz),
+        .sample_tick(trigger_48khz),      
+        .audio_data(mic_audio_data),
+        .vu_level(vu_level)
     );
 
     always @(*) begin
         case (led_func)
             2'b00: begin
                 // LED Function 0: Display microphone audio data on LEDs
-                leds = ac_audio[10:3]; // Map the upper 8 bits of the AC amplitude
+                leds = vu_level;    // Map the upper 8 bits of the AC amplitude
             end
             2'b01: begin
                 // LED Function 1: Display the user parameter that is being edited
-                leds = 8'd0;           // Placeholder for LED Function 1
+                leds = 8'd0;        // Placeholder for LED Function 1
             end
-            default: leds = 8'd0;      // Default: turn off all LEDs
+            2'b10: begin
+                // LED Function 2: Display the user parameter that is being edited
+                leds = 8'd0;        // Placeholder for LED Function 2
+            end
+            2'b11: begin
+                // LED Function 3: Display the user parameter that is being edited
+                leds = 8'd0;        // Placeholder for LED Function 3
+            end
+            default: leds = 8'd0;   // Default: turn off all LEDs
         endcase
     end
 

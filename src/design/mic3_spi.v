@@ -9,7 +9,6 @@ module pmod_mic3_spi (
     input wire miso,                // SPI MISO
 
     output reg [11:0] dc_audio_data,    // 12-bit audio sample
-    output reg [11:0] ac_audio_data     // 12-bit audio sample with DC offset removed
 );
 
     reg active = 0;
@@ -44,9 +43,6 @@ module pmod_mic3_spi (
             // One cycle after SPI finishes, extract the 12 bits and raise CS
             cs <= 1;
             dc_audio_data <= shift_reg[11:0]; 
-
-            // Subtract the DC offset of 2048 to get the absolute AC amplitude of the sound.
-            ac_audio_data <= (ac_audio_data > 12'd2048) ? (ac_audio_data - 12'd2048) : (12'd2048 - ac_audio_data);
         end
     end
 endmodule
