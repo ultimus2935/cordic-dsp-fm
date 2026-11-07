@@ -1,7 +1,7 @@
 # Clock – 100 MHz PL GCLK (Y9)
-set_property PACKAGE_PIN Y9       [get_ports clk]
-set_property IOSTANDARD  LVCMOS33 [get_ports clk]
-create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports clk]
+set_property PACKAGE_PIN Y9       [get_ports sys_clk]
+set_property IOSTANDARD  LVCMOS33 [get_ports sys_clk]
+create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports sys_clk]
 
 # Reset button – BTNR (R18, LVCMOS33)
 set_property PACKAGE_PIN R18      [get_ports rst]
@@ -36,3 +36,31 @@ set_property IOSTANDARD LVCMOS33 [get_ports mic_sclk]
 # Timing exceptions for async inputs handled by synchronisers in RTL
 set_false_path -from [get_ports {kp_row[*]}]
 set_false_path -from [get_ports rst]
+
+# ==========================================
+# Switches (SW0, SW1) mapped to led_func[1:0]
+# ==========================================
+set_property PACKAGE_PIN F22 [get_ports {led_func[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {led_func[0]}]
+set_property PACKAGE_PIN G22 [get_ports {led_func[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {led_func[1]}]
+
+# ==========================================
+# LEDs (LD0 to LD7) mapped to leds[7:0]
+# ==========================================
+set_property PACKAGE_PIN T22 [get_ports {leds[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[0]}]
+set_property PACKAGE_PIN T21 [get_ports {leds[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[1]}]
+set_property PACKAGE_PIN U22 [get_ports {leds[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[2]}]
+set_property PACKAGE_PIN U21 [get_ports {leds[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[3]}]
+set_property PACKAGE_PIN V22 [get_ports {leds[4]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[4]}]
+set_property PACKAGE_PIN W22 [get_ports {leds[5]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[5]}]
+set_property PACKAGE_PIN U19 [get_ports {leds[6]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[6]}]
+set_property PACKAGE_PIN U14 [get_ports {leds[7]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {leds[7]}]
