@@ -96,9 +96,11 @@ module top (
         .mosi2(da_mosi2)
     );
 
-    assign da_audio_data = da2_func ? mic_audio_data : 12'd2048;   // Pass through MIC3 audio or play modulated audio 
+    wire [11:0] mod_audio_data = 12'd2048;  // Default to silence (mid-scale DC offset)
 
-    wire [7:0] vu_level;            // 8-bit audio level output from VU meter
+    assign da_audio_data = da2_func ? mic_audio_data : mod_audio_data;   // Pass through MIC3 audio or play modulated audio 
+
+    wire [7:0] vu_level = 8'd0;             // 8-bit audio level output from VU meter
 
     // Instantiate VU Meter
     vu_meter vu_meter_inst (
@@ -109,6 +111,8 @@ module top (
         .vu_level(vu_level)
     );
 
-    assign leds = led_func ? vu_level : 8'd0;  // Display VU meter level or user parameter being set
+    wire [3:0] param_selected = 4'd0;       // User parameter selection from keypad
+
+    assign leds = led_func ? vu_level : {4'd0, param_selected};  // Display VU meter level or user parameter being set
 
 endmodule
