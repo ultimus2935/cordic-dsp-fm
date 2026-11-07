@@ -1,5 +1,6 @@
-module vu_meter(
+module vu_meter (
     input wire clk,                 // 32 MHz system clock
+    input wire rst,                 // System reset
     input wire sample_tick,         // 1-cycle pulse at 48 kHz (from trigger or data_valid)
     input wire [11:0] audio_data,   // 12-bit audio sample from SPI
     output wire [7:0] vu_level      // 8-bit thermometer level for LEDs
@@ -8,17 +9,19 @@ module vu_meter(
 
     // Synchronous 48 kHz Peak & Decay Tracker
     reg [11:0] peak_level = 12'd0;
-    reg [6:0]  sample_counter = 7'd0; 
+    reg [3:0] sample_counter = 4'd0; 
 
     always @(posedge clk) begin
-        // Block only evaluates when a fresh 48 kHz sample pulse arrives
-        if (sample_tick) begin
+        if (rst) begin
+            peak_level <= 12'd0;
+            sample_counter <= 4'd0;
+        end else if (sample_tick) begin
             if (ac_audio > peak_level) begin
                 peak_level <= ac_audio; 
                 sample_counter <= 7'd0;
             end else begin
                 if (sample_counter >= 4'd15) begin // 15 samples at 48 kHz = 312.5 μs per decrement step
-                    sample_counter <= 7'd0;
+                    sample_counter <= 4'd0;
                     if (peak_level > 0) peak_level <= peak_level - 1'b1; // Slow decay
                 end else sample_counter <= sample_counter + 1'b1;
             end
