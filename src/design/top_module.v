@@ -43,7 +43,7 @@ module top(
         .cs(mic_cs),
         .sclk(mic_sclk),
         .miso(mic_miso),
-        .dc_audio_data(mic_audio_data),
+        .dc_audio_data(mic_audio_data)
     );
 
     wire [7:0] vu_level;            // 8-bit audio level output from VU meter

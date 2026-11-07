@@ -8,7 +8,7 @@ module pmod_mic3_spi (
     output reg sclk,                // SPI Clock (16MHz)
     input wire miso,                // SPI MISO
 
-    output reg [11:0] dc_audio_data,    // 12-bit audio sample
+    output reg [11:0] dc_audio_data // 12-bit audio sample
 );
 
     reg active = 0;
