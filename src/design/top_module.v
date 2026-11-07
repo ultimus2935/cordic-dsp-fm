@@ -57,7 +57,7 @@ module top (
     );
 
     // ==========================================
-    // Synchronization (Trigger VU when MIC3 finishes)
+    // Synchronization (Trigger VU and DA2 when MIC3 finishes)
     // ==========================================
     reg mic_cs_prev = 1;
     reg data_valid = 0;
@@ -71,10 +71,8 @@ module top (
             
             // mic3_spi.v pulls cs high one cycle after the SPI read is complete.
             // We detect this rising edge to immediately latch the captured data into the VU meter.
-            if (mic_cs_prev == 0 && mic_cs_n == 1)
-                data_valid <= 1;
-            else
-                data_valid <= 0;
+            if (mic_cs_prev == 0 && mic_cs_n == 1) data_valid <= 1;
+            else data_valid <= 0;
         end
     end
 

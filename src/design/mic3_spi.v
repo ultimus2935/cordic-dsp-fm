@@ -13,7 +13,7 @@ module pmod_mic3_spi (
 );
 
     reg active = 0;
-    reg [2:0] clk_div = 0;          // 3-bit divider (32MHz / 8 = 4MHz SCLK)
+    reg clk_div = 0;          // 1-bit divider (32MHz / 2 = 16MHz SCLK)
     reg [4:0] bit_cnt = 0;
     reg [15:0] shift_reg = 0;
 
@@ -39,20 +39,16 @@ module pmod_mic3_spi (
                 bit_cnt <= 0;
                 sclk <= 1;          // Start with SCLK high (SPI mode 3 idle state)
             end else if (active) begin
-                clk_div <= clk_div + 1'b1;
+                clk_div <= ~clk_div; // Toggle clk_div every 32MHz clock cycle
 
-                // 4MHz SCLK generation from 32MHz clk (8 cycles per SCLK period):
-                if (clk_div == 3'd0) begin
-                    sclk <= 1;      // Rising edge returns SCLK high
-                end else if (clk_div == 3'd4) begin
+                // 16MHz SCLK generation from 32MHz clk (2 cycles per SCLK period):
+                if (clk_div) begin
                     sclk <= 0;      // Falling edge: FPGA samples current bit, ADC shifts out next bit
                     shift_reg <= {shift_reg[14:0], miso};
 
                     bit_cnt <= bit_cnt + 1'b1;
-                    if (bit_cnt == 5'd15) begin
-                        active <= 0; // Transaction complete after 16 bits (Z3..Z0, DB11..DB0)
-                    end
-                end
+                    if (bit_cnt == 5'd15) active <= 0; // Transaction complete after 16 bits (Z3..Z0, DB11..DB0)
+                end else sclk <= 1;      // Rising edge returns SCLK high                   
             end else if (cs == 0) begin 
                 // One cycle after SPI finishes, extract the 12 bits and raise CS
                 cs <= 1;
