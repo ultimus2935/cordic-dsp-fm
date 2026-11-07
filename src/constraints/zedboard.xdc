@@ -49,17 +49,15 @@ set_property IOSTANDARD LVCMOS33    [get_ports mic_sclk]
 set_false_path -from [get_ports {kp_row[*]}]
 set_false_path -from [get_ports rst]
 
-# ==========================================
-# Switches (SW0, SW1) mapped to led_func[1:0]
-# ==========================================
-set_property PACKAGE_PIN F22        [get_ports {led_func[0]}]
-set_property IOSTANDARD LVCMOS33    [get_ports {led_func[0]}]
-set_property PACKAGE_PIN G22        [get_ports {led_func[1]}]
-set_property IOSTANDARD LVCMOS33    [get_ports {led_func[1]}]
+# Switch SW7 mapped to da2_func
+set_property PACKAGE_PIN M15        [get_ports da2_func]
+set_property IOSTANDARD LVCMOS33    [get_ports da2_func]
 
-# ==========================================
+# Switch SW0 mapped to led_func
+set_property PACKAGE_PIN F22        [get_ports led_func]
+set_property IOSTANDARD LVCMOS33    [get_ports led_func]
+
 # LEDs (LD0 to LD7) mapped to leds[7:0]
-# ==========================================
 set_property PACKAGE_PIN T22        [get_ports {leds[0]}]
 set_property IOSTANDARD LVCMOS33    [get_ports {leds[0]}]
 set_property PACKAGE_PIN T21        [get_ports {leds[1]}]

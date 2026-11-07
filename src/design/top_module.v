@@ -2,15 +2,16 @@ module top (
     input wire sys_clk,     // 100 MHz PL clock
     input wire rst,         // system reset
 
-    input wire [1:0] led_func,  // Select LED function -> SW0 - SW1
-    output reg [7:0] leds,      // LEDs -> LD0 - LD7
+    input wire da2_func,        // Select DA2 function -> SW7
+    input wire led_func,        // Select LED function -> SW0
+    output wire [7:0] leds,     // LEDs -> LD0 - LD7
 
     // PMOD JA – Digilent PMOD KYPD
     output wire [3:0] kp_col,   // KYPD Columns - > JA1 - JA4 (active low)
     input  wire [3:0] kp_row,   // KYPD Rows - > JA7 - JA10 (active low)
 
     // PMOD JC – Digilent PMOD DA2
-    output wire da_sync_n,    // Chip Select -> JC1 (active low)
+    output wire da_sync_n,  // Chip Select -> JC1 (active low)
     output wire da_sclk,    // Serial Clock -> JC4
     output wire da_mosi1,   // Serial Data (MOSI) -> JC3
     output wire da_mosi2,   // Serial Data (MOSI) -> JC2
@@ -81,17 +82,21 @@ module top (
         end
     end
 
+    wire [11:0] da_audio_data;      // 12-bit audio sample for DA2
+
     // Instantiate DA2 SPI Transmitter
     pmod_da2_spi da2_spi_inst (
         .clk(clk_32mhz),
         .rst(rst),
         .start_transmit(data_valid),
-        .audio_data(mic_audio_data),
+        .audio_data(da_audio_data),
         .sync(da_sync_n),
         .sclk(da_sclk),
         .mosi1(da_mosi1),
         .mosi2(da_mosi2)
     );
+
+    assign da_audio_data = da2_func ? mic_audio_data : 12'd2048;   // Pass through MIC3 audio or play modulated audio 
 
     wire [7:0] vu_level;            // 8-bit audio level output from VU meter
 
@@ -104,26 +109,6 @@ module top (
         .vu_level(vu_level)
     );
 
-    always @(*) begin
-        case (led_func)
-            2'b00: begin
-                // LED Function 0: Display microphone audio data on LEDs
-                leds = vu_level;    // Map the 8-bit thermometer VU level
-            end
-            2'b01: begin
-                // LED Function 1: Display the user parameter that is being edited
-                leds = 8'd0;        // Placeholder for LED Function 1
-            end
-            2'b10: begin
-                // LED Function 2: Display the user parameter that is being edited
-                leds = 8'd0;        // Placeholder for LED Function 2
-            end
-            2'b11: begin
-                // LED Function 3: Display the user parameter that is being edited
-                leds = 8'd0;        // Placeholder for LED Function 3
-            end
-            default: leds = 8'd0;   // Default: turn off all LEDs
-        endcase
-    end
+    assign leds = led_func ? vu_level : 8'd0;  // Display VU meter level or user parameter being set
 
 endmodule
