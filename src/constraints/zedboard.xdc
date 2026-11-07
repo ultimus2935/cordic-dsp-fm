@@ -25,12 +25,13 @@ set_property IOSTANDARD  LVCMOS33 [get_ports {kp_row[*]}]
 set_property PULLUP      true     [get_ports {kp_row[*]}]
 
 # PMOD Header JD – Microphone SPI interface
-# JD1=mic_cs_n  JD3=mic_miso  JD4=mic_sclk
-set_property PACKAGE_PIN W12  [get_ports mic_cs_n]
+# JD1=mic_cs_n (V7)  JD3=mic_miso (V5)  JD4=mic_sclk (V4)
+set_property PACKAGE_PIN V7   [get_ports mic_cs_n]
 set_property IOSTANDARD LVCMOS33 [get_ports mic_cs_n]
-set_property PACKAGE_PIN V10  [get_ports mic_miso]
+set_property PACKAGE_PIN V5   [get_ports mic_miso]
 set_property IOSTANDARD LVCMOS33 [get_ports mic_miso]
-set_property PACKAGE_PIN W8   [get_ports mic_sclk]
+set_property PULLDOWN    true     [get_ports mic_miso]
+set_property PACKAGE_PIN V4   [get_ports mic_sclk]
 set_property IOSTANDARD LVCMOS33 [get_ports mic_sclk]
 
 # Timing exceptions for async inputs handled by synchronisers in RTL
