@@ -1,19 +1,24 @@
 module top (
-    input wire sys_clk, // 100 MHz PL clock
-    input wire rst, // system reset
+    input wire sys_clk,     // 100 MHz PL clock
+    input wire rst,         // system reset
 
-    input wire [1:0] led_func, // Select LED function -> SW0 - SW1
-    output reg [7:0] leds, // LEDs -> LD0 - LD7
+    input wire [1:0] led_func,  // Select LED function -> SW0 - SW1
+    output reg [7:0] leds,      // LEDs -> LD0 - LD7
 
     // PMOD JA – Digilent PMOD KYPD
-    output wire [3:0] kp_col, // KYPD Columns - > JA1 - JA4 (active low)
-    input  wire [3:0] kp_row, // KYPD Rows - > JA7 - JA10 (active low)
+    output wire [3:0] kp_col,   // KYPD Columns - > JA1 - JA4 (active low)
+    input  wire [3:0] kp_row,   // KYPD Rows - > JA7 - JA10 (active low)
 
     // PMOD JC – Digilent PMOD DA2
+    output wire da_sync_n,    // Chip Select -> JC1 (active low)
+    output wire da_sclk,    // Serial Clock -> JC4
+    output wire da_mosi1,   // Serial Data (MOSI) -> JC3
+    output wire da_mosi2,   // Serial Data (MOSI) -> JC2
+
     // PMOD JD – Digilent PMOD Mic
-    output wire mic_cs_n, // Chip Select -> JD1 (active low)
-    input wire mic_miso, // Serial Data (MISO) -> JD3
-    output wire mic_sclk  // Serial Clock -> JD4
+    output wire mic_cs_n,   // Chip Select -> JD1 (active low)
+    input wire mic_miso,    // Serial Data (MISO) -> JD3
+    output wire mic_sclk    // Serial Clock -> JD4
 );
     // Explicitly declare 32MHz wire from Clocking Wizard
     wire clk_32mhz;
@@ -45,8 +50,8 @@ module top (
 
     wire [11:0] mic_audio_data;     // 12-bit audio sample
 
-    // Instantiate SPI Controller
-    pmod_mic3_spi spi_ctrl (
+    // Instantiate MIC3 SPI Controller
+    pmod_mic3_spi mic3_spi_inst (
         .clk(clk_32mhz),
         .rst(rst),
         .start_sample(trigger_48khz),
@@ -75,6 +80,18 @@ module top (
             else data_valid <= 0;
         end
     end
+
+    // Instantiate DA2 SPI Transmitter
+    pmod_da2_spi da2_spi_inst (
+        .clk(clk_32mhz),
+        .rst(rst),
+        .start_transmit(data_valid),
+        .audio_data(mic_audio_data),
+        .sync(da_sync_n),
+        .sclk(da_sclk),
+        .mosi1(da_mosi1),
+        .mosi2(da_mosi2)
+    );
 
     wire [7:0] vu_level;            // 8-bit audio level output from VU meter
 

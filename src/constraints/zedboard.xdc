@@ -24,6 +24,17 @@ set_property PACKAGE_PIN AB11       [get_ports {kp_row[3]}]
 set_property IOSTANDARD  LVCMOS33   [get_ports {kp_row[*]}]
 set_property PULLUP      true       [get_ports {kp_row[*]}]
 
+# PMOD Header JC – Digilent PMOD DA2 DAC interface
+# JC1=da_sync (AB7)  JC2=da_mosi2 (AB6)  JC3=da_mosi1 (Y4)  JC4=da_sclk (AA4)
+set_property PACKAGE_PIN AB7        [get_ports da_sync_n]
+set_property IOSTANDARD LVCMOS33    [get_ports da_sync_n]
+set_property PACKAGE_PIN AB6        [get_ports da_mosi2]
+set_property IOSTANDARD LVCMOS33    [get_ports da_mosi2]
+set_property PACKAGE_PIN Y4         [get_ports da_mosi1]
+set_property IOSTANDARD LVCMOS33    [get_ports da_mosi1]
+set_property PACKAGE_PIN AA4        [get_ports da_sclk]
+set_property IOSTANDARD LVCMOS33    [get_ports da_sclk]
+
 # PMOD Header JD – Microphone SPI interface
 # JD1=mic_cs_n (V7)  JD3=mic_miso (V5)  JD4=mic_sclk (V4)
 set_property PACKAGE_PIN V7         [get_ports mic_cs_n]

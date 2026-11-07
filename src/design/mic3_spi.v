@@ -14,7 +14,7 @@ module pmod_mic3_spi (
 
     reg active = 0;
     reg clk_div = 0;          // 1-bit divider (32MHz / 2 = 16MHz SCLK)
-    reg [4:0] bit_cnt = 0;
+    reg [3:0] bit_cnt = 0;
     reg [15:0] shift_reg = 0;
 
     initial begin
@@ -29,14 +29,14 @@ module pmod_mic3_spi (
             cs <= 1;
             sclk <= 1;
             clk_div <= 0;
-            bit_cnt <= 0;
+            bit_cnt <= 4'd0;
             dc_audio_data <= 12'd2048;
         end else begin
             if (start_sample && !active) begin
                 active <= 1;
                 cs <= 0;            // Pull CS low to begin transaction
                 clk_div <= 0;
-                bit_cnt <= 0;
+                bit_cnt <= 4'd0;
                 sclk <= 1;          // Start with SCLK high (SPI mode 3 idle state)
             end else if (active) begin
                 clk_div <= ~clk_div; // Toggle clk_div every 32MHz clock cycle
@@ -47,7 +47,7 @@ module pmod_mic3_spi (
                     shift_reg <= {shift_reg[14:0], miso};
 
                     bit_cnt <= bit_cnt + 1'b1;
-                    if (bit_cnt == 5'd15) active <= 0; // Transaction complete after 16 bits (Z3..Z0, DB11..DB0)
+                    if (bit_cnt == 4'd15) active <= 0; // Transaction complete after 16 bits (Z3..Z0, DB11..DB0)
                 end else sclk <= 1;      // Rising edge returns SCLK high                   
             end else if (cs == 0) begin 
                 // One cycle after SPI finishes, extract the 12 bits and raise CS
