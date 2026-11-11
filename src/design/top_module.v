@@ -24,7 +24,9 @@ module top (
 );
     // Explicitly declare 32MHz wire from Clocking Wizard
     wire clk_32mhz;
-    wire clk_locked;
+    // clk_wiz_0 here is generated without a 'locked' output, so treat the clock
+    // as always locked. If 'locked' is enabled in the IP later, connect it instead.
+    wire clk_locked = 1'b1;
 
     clk_wiz_0 clk_wiz (
         .clk_in1(sys_clk),
