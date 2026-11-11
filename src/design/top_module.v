@@ -24,18 +24,36 @@ module top (
 );
     // Explicitly declare 32MHz wire from Clocking Wizard
     wire clk_32mhz;
+    wire clk_locked;
 
     clk_wiz_0 clk_wiz (
         .clk_in1(sys_clk),
+        .reset(rst),            // Clocking Wizard 'reset' input (enabled by default in the IP)
+        .locked(clk_locked),    // Clocking Wizard 'locked' output (enabled by default in the IP)
         .clk_out1(clk_32mhz)
     );
+
+    // ==========================================
+    // Reset synchroniser
+    // ==========================================
+    // Asserts immediately on BTNR or while the clock is not locked, and releases
+    // synchronously to clk_32mhz so every module leaves reset on the same cycle.
+    wire rst_async = rst | ~clk_locked;
+    (* ASYNC_REG = "TRUE" *) reg [2:0] rst_sync = 3'b111;
+
+    always @(posedge clk_32mhz or posedge rst_async) begin
+        if (rst_async) rst_sync <= 3'b111;
+        else           rst_sync <= {rst_sync[1:0], 1'b0};
+    end
+
+    wire sys_rst = rst_sync[2];     // use this everywhere instead of rst
 
     // Generate 48kHz trigger (32,000,000 / 48000 = 666.67)
     reg [9:0] timer = 0;
     reg trigger_48khz = 0;
     
     always @(posedge clk_32mhz) begin
-        if (rst) begin
+        if (sys_rst) begin
             timer <= 0;
             trigger_48khz <= 0;
         end else if (timer >= 666) begin
@@ -52,7 +70,7 @@ module top (
     // Instantiate MIC3 SPI Controller
     pmod_mic3_spi mic3_spi_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .start_sample(trigger_48khz),
         .cs(mic_cs_n),
         .sclk(mic_sclk),
@@ -67,7 +85,7 @@ module top (
     reg data_valid = 0;
     
     always @(posedge clk_32mhz) begin
-        if (rst) begin
+        if (sys_rst) begin
             mic_cs_prev <= 1;
             data_valid <= 0;
         end else begin
@@ -85,7 +103,7 @@ module top (
     // Instantiate DA2 SPI Transmitter
     pmod_da2_spi da2_spi_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .start_transmit(data_valid),
         .audio_data(da_audio_data),
         .sync(da_sync_n),
@@ -103,7 +121,7 @@ module top (
     // Instantiate VU Meter
     vu_meter vu_meter_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .sample_tick(data_valid),      
         .audio_data(mic_audio_data),
         .vu_level(vu_level)
@@ -118,7 +136,7 @@ module top (
 
     pmod_kypd kypd_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .kp_col(kp_col),
         .kp_row(kp_row),
         .key_valid(key_valid),
@@ -149,7 +167,7 @@ module top (
 
     param_ctrl param_ctrl_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .key_valid(key_valid),
         .key_code(key_code),
         .key_held(key_held),
