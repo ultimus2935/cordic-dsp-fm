@@ -18,7 +18,7 @@ module vu_meter (
         end else if (sample_tick) begin
             if (ac_audio > peak_level) begin
                 peak_level <= ac_audio; 
-                sample_counter <= 7'd0;
+                sample_counter <= 4'd0;
             end else begin
                 if (sample_counter >= 4'd15) begin // 15 samples at 48 kHz = 312.5 μs per decrement step
                     sample_counter <= 4'd0;
