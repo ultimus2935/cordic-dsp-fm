@@ -48,7 +48,8 @@ module top (
 
     wire sys_rst = rst_sync[2];     // use this everywhere instead of rst
 
-    // Generate 48kHz trigger (32,000,000 / 48000 = 666.67)
+    // Generate 48kHz trigger: 667-cycle period -> 32 MHz / 667 = 47.976 kHz
+    // NOTE: param_ctrl SAMPLE_DIV must match this period (currently 667)
     reg [9:0] timer = 0;
     reg trigger_48khz = 0;
     

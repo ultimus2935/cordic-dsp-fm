@@ -20,7 +20,7 @@ module vu_meter (
                 peak_level <= ac_audio; 
                 sample_counter <= 4'd0;
             end else begin
-                if (sample_counter >= 4'd15) begin // 15 samples at 48 kHz = 312.5 μs per decrement step
+                if (sample_counter >= 4'd15) begin // counts 0..15 = 16 samples at 48 kHz = 333 μs per decrement step
                     sample_counter <= 4'd0;
                     if (peak_level > 0) peak_level <= peak_level - 1'b1; // Slow decay
                 end else sample_counter <= sample_counter + 1'b1;
