@@ -1,6 +1,7 @@
 module top (
     input wire sys_clk,     // 100 MHz PL clock
     input wire rst,         // system reset
+    input wire btn_freeze,  // Freeze/unfreeze display -> BTNC
 
     input wire da2_func,        // Select DA2 function -> SW7
     input wire led_func,        // Select LED function -> SW0
@@ -28,9 +29,6 @@ module top (
         .clk_in1(sys_clk),
         .clk_out1(clk_32mhz)
     );
-
-    // Prevent floating undriven outputs for unused keypad columns (active-low inactive)
-    assign kp_col = 4'b1111;
 
     // Generate 48kHz trigger (32,000,000 / 48000 = 666.67)
     reg [9:0] timer = 0;
@@ -100,7 +98,7 @@ module top (
 
     assign da_audio_data = da2_func ? mic_audio_data : mod_audio_data;   // Pass through MIC3 audio or play modulated audio 
 
-    wire [7:0] vu_level = 8'd0;             // 8-bit audio level output from VU meter
+    wire [7:0] vu_level;                    // 8-bit audio level output from VU meter
 
     // Instantiate VU Meter
     vu_meter vu_meter_inst (
@@ -111,8 +109,69 @@ module top (
         .vu_level(vu_level)
     );
 
-    wire [3:0] param_selected = 4'd0;       // User parameter selection from keypad
+    // ==========================================
+    // Keypad (PMOD KYPD) + parameter control
+    // ==========================================
+    wire       key_valid;           // 1-cycle pulse per key press
+    wire [3:0] key_code;            // key label (0-9, A-F)
+    wire       key_held;            // a single key is being held
 
-    assign leds = led_func ? vu_level : {4'd0, param_selected};  // Display VU meter level or user parameter being set
+    pmod_kypd kypd_inst (
+        .clk(clk_32mhz),
+        .rst(rst),
+        .kp_col(kp_col),
+        .kp_row(kp_row),
+        .key_valid(key_valid),
+        .key_code(key_code),
+        .key_held(key_held)
+    );
+
+    // Modulation parameters (all registered, clk_32mhz domain) -> CORDIC / VGA
+    wire [1:0]  mod_type;           // 00 FM, 01 PM, 10 AM, 11 bypass
+    wire [13:0] fc_hz;              // carrier frequency, Hz
+    wire [11:0] fm_hz;              // modulating tone frequency, Hz
+    wire [7:0]  beta_x10;           // modulation index x10 (25 = 2.5)
+    wire [6:0]  amp_pct;            // output amplitude, 0-100 %
+    wire [2:0]  tb_log2;            // VGA timebase = 2^tb_log2
+    wire        disp_freeze;        // freeze VGA capture (BTNC toggles)
+    wire [31:0] fc_fcw;             // carrier NCO phase increment (fc * 2^32 / fs)
+    wire [31:0] fm_fcw;             // modulating-tone NCO phase increment
+    wire [31:0] dev_fcw;            // peak deviation (beta * fm) as phase increment
+    wire        param_update;       // 1-cycle pulse when any parameter changes
+
+    // UI state for a VGA status line
+    wire [2:0]  sel_param;          // 0 fc, 1 fm, 2 beta, 3 amp, 4 timebase
+    wire        entry_active;       // user is typing a value
+    wire [16:0] entry_value;        // digits typed so far
+    wire [2:0]  entry_digits;       // number of digits typed
+
+    wire [7:0]  kp_leds;            // [7] status, [6:5] mod type, [4:0] selected param
+
+    param_ctrl param_ctrl_inst (
+        .clk(clk_32mhz),
+        .rst(rst),
+        .key_valid(key_valid),
+        .key_code(key_code),
+        .key_held(key_held),
+        .btn_freeze(btn_freeze),
+        .mode(mod_type),
+        .fc_hz(fc_hz),
+        .fm_hz(fm_hz),
+        .beta_x10(beta_x10),
+        .amp_pct(amp_pct),
+        .tb_log2(tb_log2),
+        .freeze(disp_freeze),
+        .fc_fcw(fc_fcw),
+        .fm_fcw(fm_fcw),
+        .dev_fcw(dev_fcw),
+        .param_update(param_update),
+        .sel_param(sel_param),
+        .entry_active(entry_active),
+        .entry_value(entry_value),
+        .entry_digits(entry_digits),
+        .kp_leds(kp_leds)
+    );
+
+    assign leds = led_func ? vu_level : kp_leds;  // Display VU meter level or keypad status
 
 endmodule
