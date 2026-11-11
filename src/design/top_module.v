@@ -28,10 +28,14 @@ module top (
     // as always locked. If 'locked' is enabled in the IP later, connect it instead.
     wire clk_locked = 1'b1;
 
+
     clk_wiz_0 clk_wiz (
         .clk_in1(sys_clk),
+        .reset(rst),            // Clocking Wizard 'reset' input (enabled by default in the IP)
+        .locked(clk_locked),    // Clocking Wizard 'locked' output (enabled by default in the IP)
         .clk_out1(clk_32mhz)
     );
+
 
     // ==========================================
     // Reset synchroniser
