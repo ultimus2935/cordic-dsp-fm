@@ -1,7 +1,6 @@
 module top (
     input wire sys_clk,     // 100 MHz PL clock
     input wire rst,         // system reset
-    input wire btn_freeze,  // Freeze/unfreeze display -> BTNC
 
     input wire da2_func,        // Select DA2 function -> SW7
     input wire led_func,        // Select LED function -> SW0
@@ -145,21 +144,19 @@ module top (
         .key_held(key_held)
     );
 
-    // Modulation parameters (all registered, clk_32mhz domain) -> CORDIC / VGA
+    // Modulation parameters (all registered, clk_32mhz domain) -> CORDIC / DSP
     wire [1:0]  mod_type;           // 00 FM, 01 PM, 10 AM, 11 bypass
     wire [13:0] fc_hz;              // carrier frequency, Hz
     wire [11:0] fm_hz;              // modulating tone frequency, Hz
     wire [7:0]  beta_x10;           // modulation index x10 (25 = 2.5)
     wire [6:0]  amp_pct;            // output amplitude, 0-100 %
-    wire [2:0]  tb_log2;            // VGA timebase = 2^tb_log2
-    wire        disp_freeze;        // freeze VGA capture (BTNC toggles)
     wire [31:0] fc_fcw;             // carrier NCO phase increment (fc * 2^32 / fs)
     wire [31:0] fm_fcw;             // modulating-tone NCO phase increment
     wire [31:0] dev_fcw;            // peak deviation (beta * fm) as phase increment
     wire        param_update;       // 1-cycle pulse when any parameter changes
 
-    // UI state for a VGA status line
-    wire [2:0]  sel_param;          // 0 fc, 1 fm, 2 beta, 3 amp, 4 timebase
+    // UI state (shown on LEDs / VIO)
+    wire [2:0]  sel_param;          // 0 fc, 1 fm, 2 beta, 3 amp
     wire        entry_active;       // user is typing a value
     wire [16:0] entry_value;        // digits typed so far
     wire [2:0]  entry_digits;       // number of digits typed
@@ -177,14 +174,11 @@ module top (
         .key_valid(ui_valid),
         .key_code(ui_code),
         .key_held(ui_held),
-        .btn_freeze(btn_freeze),
         .mode(mod_type),
         .fc_hz(fc_hz),
         .fm_hz(fm_hz),
         .beta_x10(beta_x10),
         .amp_pct(amp_pct),
-        .tb_log2(tb_log2),
-        .freeze(disp_freeze),
         .fc_fcw(fc_fcw),
         .fm_fcw(fm_fcw),
         .dev_fcw(dev_fcw),
@@ -225,11 +219,11 @@ module top (
         .probe_in3 (fm_hz),                                 // 12  modulating tone, Hz
         .probe_in4 (beta_x10),                              // 8   modulation index x10
         .probe_in5 (amp_pct),                               // 7   amplitude, %
-        .probe_in6 ({tb_log2, mod_type, sel_param}),        // 8   [7:5] tb, [4:3] mode, [2:0] selected
+        .probe_in6 ({mod_type, sel_param}),                 // 5   [4:3] mode, [2:0] selected
         .probe_in7 (entry_value),                           // 17  digits being typed
         .probe_in8 ({key_held, key_code}),                  // 5   [4] held, [3:0] last key
         .probe_in9 (fc_fcw),                                // 32  carrier phase increment
-        .probe_in10({disp_freeze, sys_rst, clk_locked}),    // 3   [2] freeze, [1] reset, [0] locked
+        .probe_in10({sys_rst, clk_locked}),                 // 2   [1] reset, [0] locked
         .probe_out0(vio_key),                               // 4
         .probe_out1(vio_press),                             // 1
         .probe_out2(vio_en)                                 // 1

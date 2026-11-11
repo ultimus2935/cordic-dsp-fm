@@ -7,10 +7,6 @@ create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports sys
 set_property PACKAGE_PIN R18        [get_ports rst]
 set_property IOSTANDARD  LVCMOS33   [get_ports rst]
 
-# Freeze button – BTNC (P16, LVCMOS33)
-set_property PACKAGE_PIN P16        [get_ports btn_freeze]
-set_property IOSTANDARD  LVCMOS33   [get_ports btn_freeze]
-
 # PMOD Header JA – Keypad columns (active LOW, inactive columns high-Z)
 # JA1=col[3]  JA2=col[2]  JA3=col[1]  JA4=col[0]
 set_property PACKAGE_PIN AA9        [get_ports {kp_col[0]}]
@@ -52,7 +48,6 @@ set_property IOSTANDARD LVCMOS33    [get_ports mic_sclk]
 # Timing exceptions for async inputs handled by synchronisers in RTL
 set_false_path -from [get_ports {kp_row[*]}]
 set_false_path -from [get_ports rst]
-set_false_path -from [get_ports btn_freeze]
 
 # Switch SW7 mapped to da2_func
 set_property PACKAGE_PIN M15        [get_ports da2_func]

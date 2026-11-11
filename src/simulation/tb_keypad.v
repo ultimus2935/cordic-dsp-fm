@@ -59,25 +59,23 @@ module tb_keypad;
         .key_valid(key_valid), .key_code(key_code), .key_held(key_held)
     );
 
-    reg btn_freeze = 0;
     wire [1:0]  mode;
     wire [13:0] fc_hz;
     wire [11:0] fm_hz;
     wire [7:0]  beta_x10;
     wire [6:0]  amp_pct;
-    wire [2:0]  tb_log2, sel_param, entry_digits;
-    wire        freeze, param_update, entry_active;
+    wire [2:0]  sel_param, entry_digits;
+    wire        param_update, entry_active;
     wire [31:0] fc_fcw, fm_fcw, dev_fcw;
     wire [16:0] entry_value;
     wire [7:0]  kp_leds;
 
     param_ctrl #(.CLK_HZ(32_000_000), .SAMPLE_DIV(SAMPLE_DIV), .MS_TICKS(MS),
-                 .REPEAT_DELAY_MS(10), .REPEAT_MS(3), .BTN_DEBOUNCE_MS(4)) u_ctrl (
+                 .REPEAT_DELAY_MS(10), .REPEAT_MS(3)) u_ctrl (
         .clk(clk), .rst(rst),
         .key_valid(key_valid), .key_code(key_code), .key_held(key_held),
-        .btn_freeze(btn_freeze),
         .mode(mode), .fc_hz(fc_hz), .fm_hz(fm_hz), .beta_x10(beta_x10),
-        .amp_pct(amp_pct), .tb_log2(tb_log2), .freeze(freeze),
+        .amp_pct(amp_pct),
         .fc_fcw(fc_fcw), .fm_fcw(fm_fcw), .dev_fcw(dev_fcw), .param_update(param_update),
         .sel_param(sel_param), .entry_active(entry_active),
         .entry_value(entry_value), .entry_digits(entry_digits),
@@ -165,7 +163,7 @@ module tb_keypad;
         // ------------------------------------------------------------------
         $display("[1] Reset defaults");
         check(fc_hz == 1000 && fm_hz == 50 && beta_x10 == 20 && amp_pct == 80 &&
-              tb_log2 == 0 && mode == 0 && sel_param == 0, "defaults loaded");
+              mode == 0 && sel_param == 0, "defaults loaded");
         check(kp_leds[4:0] == 5'b00001, "LED0 lit = fc selected");
         check(absdiff(fc_fcw, exp_fcw(1000.0)) <= 2, "fc_fcw for 1000 Hz");
         check(n_updates >= 1, "param_update pulsed after reset");
@@ -233,16 +231,16 @@ module tb_keypad;
         check(beta_x10 == 0, "F at 0 stays 0");
 
         // ------------------------------------------------------------------
-        $display("[9] Timebase rounds down to power of two");
-        tap(4'hA); tap(4'hA);
-        check(sel_param == 4 && kp_leds[4:0] == 5'b10000, "timebase selected, LED4 lit");
-        tap(4'h1); tap(4'h0); tap(4'hD);
-        check(tb_log2 == 3, "typed 10 -> x8 (log2 = 3)");
-        tap(4'hE);
-        check(tb_log2 == 4, "E doubles -> x16");
+        $display("[9] Amplitude: select, clamp, step");
+        tap(4'hA);
+        check(sel_param == 3 && kp_leds[4:0] == 5'b01000, "amp selected, LED3 lit");
+        tap(4'h1); tap(4'h5); tap(4'h0); tap(4'hD);
+        check(amp_pct == 100, "typed 150 -> clamped to 100");
+        tap(4'hF);
+        check(amp_pct == 95, "F: 100 -> 95");
 
         // ------------------------------------------------------------------
-        $display("[10] A wraps back to fc");
+        $display("[10] A wraps back to fc (4 parameters)");
         tap(4'hA);
         check(sel_param == 0, "wrapped to fc");
 
@@ -276,17 +274,7 @@ module tb_keypad;
         check(fc_hz == 12000, "12345 clamped to 12000");
 
         // ------------------------------------------------------------------
-        $display("[14] Freeze button (bouncy) toggles");
-        for (i = 0; i < 4; i = i + 1) begin btn_freeze = ~btn_freeze; repeat (7) @(posedge clk); end
-        btn_freeze = 1; repeat (8 * MS) @(posedge clk);
-        btn_freeze = 0; repeat (8 * MS) @(posedge clk);
-        check(freeze == 1, "freeze on after one press");
-        btn_freeze = 1; repeat (8 * MS) @(posedge clk);
-        btn_freeze = 0; repeat (8 * MS) @(posedge clk);
-        check(freeze == 0, "freeze off after second press");
-
-        // ------------------------------------------------------------------
-        $display("[15] Columns: exactly one driven low, others high-Z");
+        $display("[14] Columns: exactly one driven low, others high-Z");
         check(((kp_col === 4'bzzz0) || (kp_col === 4'bzz0z) ||
                (kp_col === 4'bz0zz) || (kp_col === 4'b0zzz)), "column drive pattern");
 
