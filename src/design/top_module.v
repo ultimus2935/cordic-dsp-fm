@@ -24,10 +24,7 @@ module top (
 );
     // Explicitly declare 32MHz wire from Clocking Wizard
     wire clk_32mhz;
-    // clk_wiz_0 here is generated without a 'locked' output, so treat the clock
-    // as always locked. If 'locked' is enabled in the IP later, connect it instead.
-    wire clk_locked = 1'b1;
-
+    wire clk_locked;                // driven by clk_wiz_0 'locked' (enable it in the IP)
 
     clk_wiz_0 clk_wiz (
         .clk_in1(sys_clk),
@@ -35,7 +32,6 @@ module top (
         .locked(clk_locked),    // Clocking Wizard 'locked' output (enabled by default in the IP)
         .clk_out1(clk_32mhz)
     );
-
 
     // ==========================================
     // Reset synchroniser
