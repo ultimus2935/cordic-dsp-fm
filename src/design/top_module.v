@@ -166,12 +166,17 @@ module top (
 
     wire [7:0]  kp_leds;            // [7] status, [6:5] mod type, [4:0] selected param
 
+    // Key events into param_ctrl: from the keypad, or from VIO when debugging
+    wire       ui_valid;
+    wire [3:0] ui_code;
+    wire       ui_held;
+
     param_ctrl param_ctrl_inst (
         .clk(clk_32mhz),
         .rst(sys_rst),
-        .key_valid(key_valid),
-        .key_code(key_code),
-        .key_held(key_held),
+        .key_valid(ui_valid),
+        .key_code(ui_code),
+        .key_held(ui_held),
         .btn_freeze(btn_freeze),
         .mode(mod_type),
         .fc_hz(fc_hz),
@@ -192,5 +197,47 @@ module top (
     );
 
     assign leds = led_func ? vu_level : kp_leds;  // Display VU meter level or keypad status
+
+    // ==========================================
+    // VIO debug core (optional)
+    // ==========================================
+    // Define USE_VIO (Vivado: Settings > General > Verilog options > Defines) and
+    // create the IP with src/ip/create_vio.tcl to get a live dashboard over JTAG.
+    // Without USE_VIO the keypad drives param_ctrl directly and no IP is needed.
+`ifdef USE_VIO
+    wire [3:0] vio_key;             // key label to inject (0-9, A-F)
+    wire       vio_press;           // toggle 0 -> 1 to inject one press
+    wire       vio_en;              // 1 = VIO drives param_ctrl, 0 = real keypad
+
+    reg vio_press_d = 1'b0;
+    always @(posedge clk_32mhz) vio_press_d <= vio_press;
+    wire vio_valid = vio_press & ~vio_press_d;   // one-cycle pulse per 0 -> 1 toggle
+
+    assign ui_valid = vio_en ? vio_valid : key_valid;
+    assign ui_code  = vio_en ? vio_key   : key_code;
+    assign ui_held  = vio_en ? 1'b0      : key_held;
+
+    vio_0 vio_inst (
+        .clk       (clk_32mhz),
+        .probe_in0 (mic_audio_data),                        // 12  mic sample (2048 = silence)
+        .probe_in1 (vu_level),                              // 8   VU meter bar
+        .probe_in2 (fc_hz),                                 // 14  carrier, Hz
+        .probe_in3 (fm_hz),                                 // 12  modulating tone, Hz
+        .probe_in4 (beta_x10),                              // 8   modulation index x10
+        .probe_in5 (amp_pct),                               // 7   amplitude, %
+        .probe_in6 ({tb_log2, mod_type, sel_param}),        // 8   [7:5] tb, [4:3] mode, [2:0] selected
+        .probe_in7 (entry_value),                           // 17  digits being typed
+        .probe_in8 ({key_held, key_code}),                  // 5   [4] held, [3:0] last key
+        .probe_in9 (fc_fcw),                                // 32  carrier phase increment
+        .probe_in10({disp_freeze, sys_rst, clk_locked}),    // 3   [2] freeze, [1] reset, [0] locked
+        .probe_out0(vio_key),                               // 4
+        .probe_out1(vio_press),                             // 1
+        .probe_out2(vio_en)                                 // 1
+    );
+`else
+    assign ui_valid = key_valid;
+    assign ui_code  = key_code;
+    assign ui_held  = key_held;
+`endif
 
 endmodule
