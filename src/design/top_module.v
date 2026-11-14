@@ -100,7 +100,7 @@ module top (
 
     assign da_audio_data = da2_func ? mic_audio_data : mod_audio_data;   // Pass through MIC3 audio or play modulated audio 
 
-    wire [7:0] vu_level = 8'd0;             // 8-bit audio level output from VU meter
+    wire [7:0] vu_level;                    // 8-bit audio level output from VU meter
 
     // Instantiate VU Meter
     vu_meter vu_meter_inst (
