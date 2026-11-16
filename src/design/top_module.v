@@ -112,7 +112,7 @@ module top (
         .mosi2(da_mosi2)
     );
 
-    wire [11:0] mod_audio_data = 12'd2048;  // Default to silence (mid-scale DC offset)
+    wire [11:0] mod_audio_data;             // Modulated audio from cordic_mod (below)
 
     assign da_audio_data = da2_func ? mic_audio_data : mod_audio_data;   // Pass through MIC3 audio or play modulated audio 
 
@@ -188,6 +188,25 @@ module top (
         .entry_value(entry_value),
         .entry_digits(entry_digits),
         .kp_leds(kp_leds)
+    );
+
+    // ==========================================
+    // CORDIC modulator (FM / PM / AM / bypass)
+    // ==========================================
+    // Computes one sample per data_valid; the result is registered and read by
+    // the DAC on the next data_valid (one sample of latency).
+    cordic_mod cordic_mod_inst (
+        .clk(clk_32mhz),
+        .rst(sys_rst),
+        .tick(data_valid),
+        .mode(mod_type),
+        .fc_fcw(fc_fcw),
+        .fm_fcw(fm_fcw),
+        .dev_fcw(dev_fcw),
+        .beta_x10(beta_x10),
+        .amp_pct(amp_pct),
+        .sample_out(mod_audio_data),
+        .out_valid()
     );
 
     assign leds = led_func ? vu_level : kp_leds;  // Display VU meter level or keypad status
