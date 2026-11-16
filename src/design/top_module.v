@@ -23,21 +23,37 @@ module top (
 );
     // Explicitly declare 32MHz wire from Clocking Wizard
     wire clk_32mhz;
+    wire clk_locked;                // driven by clk_wiz_0 'locked' (enable it in the IP)
 
     clk_wiz_0 clk_wiz (
         .clk_in1(sys_clk),
+        .reset(rst),            // Clocking Wizard 'reset' input (enabled by default in the IP)
+        .locked(clk_locked),    // Clocking Wizard 'locked' output (enabled by default in the IP)
         .clk_out1(clk_32mhz)
     );
 
-    // Prevent floating undriven outputs for unused keypad columns (active-low inactive)
-    assign kp_col = 4'b1111;
+    // ==========================================
+    // Reset synchroniser
+    // ==========================================
+    // Asserts immediately on BTNR or while the clock is not locked, and releases
+    // synchronously to clk_32mhz so every module leaves reset on the same cycle.
+    wire rst_async = rst | ~clk_locked;
+    (* ASYNC_REG = "TRUE" *) reg [2:0] rst_sync = 3'b111;
 
-    // Generate 48kHz trigger (32,000,000 / 48000 = 666.67)
+    always @(posedge clk_32mhz or posedge rst_async) begin
+        if (rst_async) rst_sync <= 3'b111;
+        else           rst_sync <= {rst_sync[1:0], 1'b0};
+    end
+
+    wire sys_rst = rst_sync[2];     // use this everywhere instead of rst
+
+    // Generate 48kHz trigger: 667-cycle period -> 32 MHz / 667 = 47.976 kHz
+    // NOTE: param_ctrl SAMPLE_DIV must match this period (currently 667)
     reg [9:0] timer = 0;
     reg trigger_48khz = 0;
     
     always @(posedge clk_32mhz) begin
-        if (rst) begin
+        if (sys_rst) begin
             timer <= 0;
             trigger_48khz <= 0;
         end else if (timer >= 666) begin
@@ -54,7 +70,7 @@ module top (
     // Instantiate MIC3 SPI Controller
     pmod_mic3_spi mic3_spi_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .start_sample(trigger_48khz),
         .cs(mic_cs_n),
         .sclk(mic_sclk),
@@ -69,7 +85,7 @@ module top (
     reg data_valid = 0;
     
     always @(posedge clk_32mhz) begin
-        if (rst) begin
+        if (sys_rst) begin
             mic_cs_prev <= 1;
             data_valid <= 0;
         end else begin
@@ -87,7 +103,7 @@ module top (
     // Instantiate DA2 SPI Transmitter
     pmod_da2_spi da2_spi_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .start_transmit(data_valid),
         .audio_data(da_audio_data),
         .sync(da_sync_n),
@@ -105,14 +121,117 @@ module top (
     // Instantiate VU Meter
     vu_meter vu_meter_inst (
         .clk(clk_32mhz),
-        .rst(rst),
+        .rst(sys_rst),
         .sample_tick(data_valid),      
         .audio_data(mic_audio_data),
         .vu_level(vu_level)
     );
 
-    wire [3:0] param_selected = 4'd0;       // User parameter selection from keypad
+    // ==========================================
+    // Keypad (PMOD KYPD) + parameter control
+    // ==========================================
+    wire       key_valid;           // 1-cycle pulse per key press
+    wire [3:0] key_code;            // key label (0-9, A-F)
+    wire       key_held;            // a single key is being held
 
-    assign leds = led_func ? vu_level : {4'd0, param_selected};  // Display VU meter level or user parameter being set
+    pmod_kypd kypd_inst (
+        .clk(clk_32mhz),
+        .rst(sys_rst),
+        .kp_col(kp_col),
+        .kp_row(kp_row),
+        .key_valid(key_valid),
+        .key_code(key_code),
+        .key_held(key_held)
+    );
+
+    // Modulation parameters (all registered, clk_32mhz domain) -> CORDIC / DSP
+    wire [1:0]  mod_type;           // 00 FM, 01 PM, 10 AM, 11 bypass
+    wire [13:0] fc_hz;              // carrier frequency, Hz
+    wire [11:0] fm_hz;              // modulating tone frequency, Hz
+    wire [7:0]  beta_x10;           // modulation index x10 (25 = 2.5)
+    wire [6:0]  amp_pct;            // output amplitude, 0-100 %
+    wire [31:0] fc_fcw;             // carrier NCO phase increment (fc * 2^32 / fs)
+    wire [31:0] fm_fcw;             // modulating-tone NCO phase increment
+    wire [31:0] dev_fcw;            // peak deviation (beta * fm) as phase increment
+    wire        param_update;       // 1-cycle pulse when any parameter changes
+
+    // UI state (shown on LEDs / VIO)
+    wire [2:0]  sel_param;          // 0 fc, 1 fm, 2 beta, 3 amp
+    wire        entry_active;       // user is typing a value
+    wire [16:0] entry_value;        // digits typed so far
+    wire [2:0]  entry_digits;       // number of digits typed
+
+    wire [7:0]  kp_leds;            // [7] status, [6:5] mod type, [4:0] selected param
+
+    // Key events into param_ctrl: from the keypad, or from VIO when debugging
+    wire       ui_valid;
+    wire [3:0] ui_code;
+    wire       ui_held;
+
+    param_ctrl param_ctrl_inst (
+        .clk(clk_32mhz),
+        .rst(sys_rst),
+        .key_valid(ui_valid),
+        .key_code(ui_code),
+        .key_held(ui_held),
+        .mode(mod_type),
+        .fc_hz(fc_hz),
+        .fm_hz(fm_hz),
+        .beta_x10(beta_x10),
+        .amp_pct(amp_pct),
+        .fc_fcw(fc_fcw),
+        .fm_fcw(fm_fcw),
+        .dev_fcw(dev_fcw),
+        .param_update(param_update),
+        .sel_param(sel_param),
+        .entry_active(entry_active),
+        .entry_value(entry_value),
+        .entry_digits(entry_digits),
+        .kp_leds(kp_leds)
+    );
+
+    assign leds = led_func ? vu_level : kp_leds;  // Display VU meter level or keypad status
+
+    // ==========================================
+    // VIO debug core (optional)
+    // ==========================================
+    // Define USE_VIO (Vivado: Settings > General > Verilog options > Defines) and
+    // create the IP with src/ip/create_vio.tcl to get a live dashboard over JTAG.
+    // Without USE_VIO the keypad drives param_ctrl directly and no IP is needed.
+`ifdef USE_VIO
+    wire [3:0] vio_key;             // key label to inject (0-9, A-F)
+    wire       vio_press;           // toggle 0 -> 1 to inject one press
+    wire       vio_en;              // 1 = VIO drives param_ctrl, 0 = real keypad
+
+    reg vio_press_d = 1'b0;
+    always @(posedge clk_32mhz) vio_press_d <= vio_press;
+    wire vio_valid = vio_press & ~vio_press_d;   // one-cycle pulse per 0 -> 1 toggle
+
+    assign ui_valid = vio_en ? vio_valid : key_valid;
+    assign ui_code  = vio_en ? vio_key   : key_code;
+    assign ui_held  = vio_en ? 1'b0      : key_held;
+
+    vio_0 vio_inst (
+        .clk       (clk_32mhz),
+        .probe_in0 (mic_audio_data),                        // 12  mic sample (2048 = silence)
+        .probe_in1 (vu_level),                              // 8   VU meter bar
+        .probe_in2 (fc_hz),                                 // 14  carrier, Hz
+        .probe_in3 (fm_hz),                                 // 12  modulating tone, Hz
+        .probe_in4 (beta_x10),                              // 8   modulation index x10
+        .probe_in5 (amp_pct),                               // 7   amplitude, %
+        .probe_in6 ({mod_type, sel_param}),                 // 5   [4:3] mode, [2:0] selected
+        .probe_in7 (entry_value),                           // 17  digits being typed
+        .probe_in8 ({key_held, key_code}),                  // 5   [4] held, [3:0] last key
+        .probe_in9 (fc_fcw),                                // 32  carrier phase increment
+        .probe_in10({sys_rst, clk_locked}),                 // 2   [1] reset, [0] locked
+        .probe_out0(vio_key),                               // 4
+        .probe_out1(vio_press),                             // 1
+        .probe_out2(vio_en)                                 // 1
+    );
+`else
+    assign ui_valid = key_valid;
+    assign ui_code  = key_code;
+    assign ui_held  = key_held;
+`endif
 
 endmodule

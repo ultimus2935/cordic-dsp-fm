@@ -2,7 +2,7 @@
 
 module pmod_da2_spi (
     input wire clk,                 // 32MHz clock
-    input wire rst,                 // Active-high reset
+    input wire rst,                 // Active-high synchronous reset
     input wire start_transmit,      // Triggered by MIC3 CS rising edge
     input wire [11:0] audio_data,   // 12-bit audio sample
 
@@ -25,7 +25,7 @@ module pmod_da2_spi (
         sclk = 1;
     end
 
-    always @(posedge clk or posedge rst) begin
+    always @(posedge clk) begin
         if (rst) begin
             active <= 0;
             sync <= 1;

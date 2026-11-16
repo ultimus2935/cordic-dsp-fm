@@ -6,7 +6,7 @@ module pmod_mic3_spi (
     input wire start_sample,        // Trigger pulse at 48kHz
     
     output reg cs,                  // SPI Chip Select (active low)
-    output reg sclk,                // SPI Clock (4MHz)
+    output reg sclk,                // SPI Clock (16MHz)
     input wire miso,                // SPI MISO
 
     output reg [11:0] dc_audio_data // 12-bit audio sample

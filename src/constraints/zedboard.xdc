@@ -7,7 +7,7 @@ create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports sys
 set_property PACKAGE_PIN R18        [get_ports rst]
 set_property IOSTANDARD  LVCMOS33   [get_ports rst]
 
-# PMOD Header JA – Keypad columns (active LOW outputs)
+# PMOD Header JA – Keypad columns (active LOW, inactive columns high-Z)
 # JA1=col[3]  JA2=col[2]  JA3=col[1]  JA4=col[0]
 set_property PACKAGE_PIN AA9        [get_ports {kp_col[0]}]
 set_property PACKAGE_PIN Y10        [get_ports {kp_col[1]}]
