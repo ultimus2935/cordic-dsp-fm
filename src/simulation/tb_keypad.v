@@ -202,9 +202,9 @@ module tb_keypad;
         tap(4'hA);
         check(sel_param == 1 && kp_leds[4:0] == 5'b00010, "fm selected, LED1 lit");
         tap(4'h9); tap(4'h9); tap(4'h9); tap(4'h9); tap(4'hD);
-        check(fm_hz == 3000, "fm clamped to 3000");
+        check(fm_hz == 1000, "fm clamped to 1000");
         check(u_ctrl.err_ms != 0, "clamp error blink active");
-        check(absdiff(fm_fcw, exp_fcw(3000.0)) <= 2, "fm_fcw matches 3000 Hz");
+        check(absdiff(fm_fcw, exp_fcw(1000.0)) <= 2, "fm_fcw matches 1000 Hz");
 
         // ------------------------------------------------------------------
         $display("[6] A -> beta, E/F single steps");
@@ -214,7 +214,7 @@ module tb_keypad;
         check(beta_x10 == 25, "E: beta 2.0 -> 2.5");
         tap(4'hF); tap(4'hF);
         check(beta_x10 == 15, "F F: beta 2.5 -> 1.5");
-        check(absdiff(dev_fcw, exp_fcw(1.5 * 3000.0)) <= 4, "dev_fcw = beta*fm");
+        check(absdiff(dev_fcw, exp_fcw(1.5 * 1000.0)) <= 4, "dev_fcw = beta*fm");
 
         // ------------------------------------------------------------------
         $display("[7] Holding E auto-repeats");

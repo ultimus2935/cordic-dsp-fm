@@ -11,7 +11,7 @@
 // ---------------------------------------------------------------- KEY MAP ----
 //   [ 1 ][ 2 ][ 3 ][ A ]     0-9 : type a value for the selected parameter
 //   [ 4 ][ 5 ][ 6 ][ B ]     A   : next parameter (fc > fm > beta > amp > fc ...)
-//   [ 7 ][ 8 ][ 9 ][ C ]     B   : modulation type (FM > PM > AM > BYPASS)
+//   [ 7 ][ 8 ][ 9 ][ C ]     B   : modulation type (FM > PM > AM > CARRIER)
 //   [ 0 ][ F ][ E ][ D ]     C   : clear typed digits
 //                            D   : enter - apply typed value (clamped)
 //                            E/F : step selected parameter up/down (hold = repeat)
@@ -21,14 +21,14 @@
 //   sel | name     | typed as                | step  | range     | default
 //   ----+----------+-------------------------+-------+-----------+--------
 //    0  | fc_hz    | Hz                      | 50    | 100-12000 | 1000
-//    1  | fm_hz    | Hz                      | 5     | 1-3000    | 50
-//    2  | beta_x10 | tenths (25 -> 2.5)      | 5     | 0-200     | 20
+//    1  | fm_hz    | Hz                      | 5     | 1-1000    | 50
+//    2  | beta_x10 | tenths (25 -> 2.5)      | 5     | 0-100     | 20
 //    3  | amp_pct  | percent                 | 5     | 0-100     | 80
 //   Out-of-range values are clamped and the status LED fast-blinks.
 //
 // --------------------------------------------------------------- KP_LEDS -----
 //   [7] status : slow blink = typing, 200 ms ON = applied, fast blink = clamped
-//   [6:5] mode : 00 FM, 01 PM, 10 AM, 11 BYPASS
+//   [6:5] mode : 00 FM, 01 PM, 10 AM, 11 carrier only (no modulation)
 //   [4]        : unused (0)
 //   [3:0]      : one-hot selected parameter (LD0 fc, LD1 fm, LD2 beta, LD3 amp)
 //
@@ -55,7 +55,7 @@ module param_ctrl #(
     input  wire        key_held,
 
     // ---- modulation parameters (to DSP) ----
-    output reg  [1:0]  mode,        // 00 FM, 01 PM, 10 AM, 11 BYPASS
+    output reg  [1:0]  mode,        // 00 FM, 01 PM, 10 AM, 11 carrier only
     output reg  [13:0] fc_hz,
     output reg  [11:0] fm_hz,
     output reg  [7:0]  beta_x10,
@@ -92,8 +92,8 @@ module param_ctrl #(
     localparam [2:0] P_LAST = P_AMP;
 
     localparam integer FC_MIN   = 100,  FC_MAX   = 12000, FC_STEP   = 50, FC_DEF   = 1000;
-    localparam integer FM_MIN   = 1,    FM_MAX   = 3000,  FM_STEP   = 5,  FM_DEF   = 50;
-    localparam integer BETA_MIN = 0,    BETA_MAX = 200,   BETA_STEP = 5,  BETA_DEF = 20;
+    localparam integer FM_MIN   = 1,    FM_MAX   = 1000,  FM_STEP   = 5,  FM_DEF   = 50;
+    localparam integer BETA_MIN = 0,    BETA_MAX = 100,   BETA_STEP = 5,  BETA_DEF = 20;
     localparam integer AMP_MIN  = 0,    AMP_MAX  = 100,   AMP_STEP  = 5,  AMP_DEF  = 80;
 
     localparam integer MAX_DIGITS = 5;
