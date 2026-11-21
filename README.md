@@ -10,6 +10,7 @@ The current design is made for and tested on the Avnet Zedboard. Constraints (.x
 | BTNR | Reset |
 | SW0 | LEDs: 0 = keypad status, 1 = VU meter (mic level) |
 | SW1 | Message source: 0 = internal test tone at fm, 1 = microphone |
+| SW2 | Audio RAM storage: 0 = circular continuous record, 1 = freeze buffer (Scope 4) |
 | SW7 | DA2 channels: 0 = A modulated / B mic, 1 = A mic / B modulated |
 
 Pmods: KYPD on JA, DA2 on JC, MIC3 on JD (top row of pins). The DA2 has no jack:

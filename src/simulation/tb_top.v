@@ -25,6 +25,7 @@ module tb_top;
     reg da2_func   = 0;                            // SW7
     reg led_func   = 0;                            // SW0
     reg msg_src_sw = 0;                            // SW1
+    reg freeze_sw  = 0;                            // SW2
     wire [7:0] leds;
 
     wire [3:0] kp_col, kp_row;
@@ -34,7 +35,7 @@ module tb_top;
 
     top dut (
         .sys_clk(sys_clk), .rst(rst),
-        .da2_func(da2_func), .led_func(led_func), .msg_src_sw(msg_src_sw), .leds(leds),
+        .da2_func(da2_func), .led_func(led_func), .msg_src_sw(msg_src_sw), .freeze_sw(freeze_sw), .leds(leds),
         .kp_col(kp_col), .kp_row(kp_row),
         .da_sync_n(da_sync_n), .da_sclk(da_sclk), .da_mosi1(da_mosi1), .da_mosi2(da_mosi2),
         .mic_cs_n(mic_cs_n), .mic_miso(mic_miso), .mic_sclk(mic_sclk)
@@ -328,6 +329,19 @@ module tb_top;
         wait_frames(480);
         $display("       leds = %b", leds);
         check(leds[5:0] == 6'b111111, "VU bar lit for a loud mic");
+
+        // --------------------------------------------------------------
+        $display("[11] Audio Storage BRAM Buffer (Scope 4)");
+        check(dut.audio_ram_inst.buffer_full === 1'b1, "BRAM buffer stored >= 2048 samples");
+        freeze_sw = 1;                                  // SW2 = 1: freeze recording
+        wait_frames(10);
+        f0 = dut.audio_ram_inst.wr_addr;
+        wait_frames(50);
+        f1 = dut.audio_ram_inst.wr_addr;
+        check(f0 == f1, "SW2 = 1 freezes BRAM write address");
+        freeze_sw = 0;                                  // SW2 = 0: resume circular capture
+        wait_frames(10);
+        check(dut.audio_ram_inst.wr_addr != f0, "SW2 = 0 resumes circular recording");
 
         $display("");
         if (errors == 0) $display("ALL SYSTEM TESTS PASSED");

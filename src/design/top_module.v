@@ -5,6 +5,7 @@ module top (
     input wire da2_func,        // DA2 channel swap -> SW7 (0: A = modulated, B = mic; 1: A = mic, B = modulated)
     input wire led_func,        // Select LED function -> SW0
     input wire msg_src_sw,      // Message source -> SW1 (0 = test tone, 1 = microphone)
+    input wire freeze_sw,       // Audio RAM capture freeze -> SW2 (0 = circular record, 1 = freeze/hold)
     output wire [7:0] leds,     // LEDs -> LD0 - LD7
 
     // PMOD JA – Digilent PMOD KYPD
@@ -118,9 +119,24 @@ module top (
     );
 
     wire [11:0] mod_audio_data;             // Modulated audio from cordic_mod (below)
+    wire [11:0] ram_rd_orig;
+    wire [11:0] ram_rd_mod;
 
-    assign da_audio_a = da2_func ? mic_audio_data : mod_audio_data;
-    assign da_audio_b = da2_func ? mod_audio_data : mic_audio_data;
+    // Freeze switch (SW2): asynchronous, so synchronise it first
+    (* ASYNC_REG = "TRUE" *) reg [1:0] freeze_sync = 2'b00;
+    always @(posedge clk_32mhz) freeze_sync <= {freeze_sync[0], freeze_sw};
+    wire freeze_active = freeze_sync[1];
+
+    // Normal mode: live captured mic & modulated audio
+    wire [11:0] da_live_a = da2_func ? mic_audio_data : mod_audio_data;
+    wire [11:0] da_live_b = da2_func ? mod_audio_data : mic_audio_data;
+
+    // Freeze mode (SW2): playback / loop stored BRAM buffer for oscilloscope inspection
+    wire [11:0] da_frozen_a = da2_func ? ram_rd_orig : ram_rd_mod;
+    wire [11:0] da_frozen_b = da2_func ? ram_rd_mod  : ram_rd_orig;
+
+    assign da_audio_a = freeze_active ? da_frozen_a : da_live_a;
+    assign da_audio_b = freeze_active ? da_frozen_b : da_live_b;
 
     wire [7:0] vu_level;                    // 8-bit audio level output from VU meter
 
@@ -220,6 +236,45 @@ module top (
         .msg_src(msg_src),
         .sample_out(mod_audio_data),
         .out_valid()
+    );
+
+    // ==========================================
+    // Internal Audio Storage RAM (Scope Task 4)
+    // ==========================================
+    // Buffers 2048 words of {mic_audio, mod_audio} in 7-series Block RAM.
+    // When SW2 (freeze_sw) is high, recording pauses, freezing the frame
+    // and looping playback through Pmod DA2 for oscilloscope analysis.
+    wire [10:0] ram_wr_addr;
+    wire        ram_full;
+    reg  [10:0] ram_playback_ptr = 11'd0;
+
+    always @(posedge clk_32mhz) begin
+        if (sys_rst) begin
+            ram_playback_ptr <= 11'd0;
+        end else if (data_valid) begin
+            if (!freeze_active)
+                ram_playback_ptr <= ram_wr_addr;
+            else
+                ram_playback_ptr <= ram_playback_ptr + 1'b1;
+        end
+    end
+
+    (* DONT_TOUCH = "TRUE" *)
+    audio_storage_ram #(
+        .ADDR_WIDTH(11),
+        .DATA_WIDTH(24)
+    ) audio_ram_inst (
+        .clk(clk_32mhz),
+        .rst(sys_rst),
+        .sample_tick(data_valid),
+        .freeze(freeze_active),
+        .orig_sample(mic_audio_data),
+        .mod_sample(mod_audio_data),
+        .wr_addr(ram_wr_addr),
+        .buffer_full(ram_full),
+        .rd_addr(ram_playback_ptr),
+        .rd_orig_sample(ram_rd_orig),
+        .rd_mod_sample(ram_rd_mod)
     );
 
     assign leds = led_func ? vu_level : kp_leds;  // Display VU meter level or keypad status

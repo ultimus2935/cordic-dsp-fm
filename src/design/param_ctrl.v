@@ -198,12 +198,12 @@ module param_ctrl #(
     reg        changed  = 1'b0;   // a parameter register changed this cycle
     reg        flash    = 1'b0;   // request "applied" flash
     reg        err      = 1'b0;   // request "clamped" blink
-    reg [17:0] r;                 // scratch (blocking)
 
     wire do_step = (key_valid && is_step_key) || rep_go;
     wire step_up = (key_code == KEY_UP);
 
-    always @(posedge clk) begin
+    always @(posedge clk) begin : ui_proc
+        reg [17:0] r;                 // scratchpad local to clock block
         if (rst) begin
             sel_param    <= P_FC;
             mode         <= 2'b00;
