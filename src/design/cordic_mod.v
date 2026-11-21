@@ -5,15 +5,23 @@
 // =============================================================================
 // Once per audio sample (`tick`) this computes one output sample:
 //
-//   message   m[n]   = sin(tone_ph)                      tone at fm
+//   message   m[n]   = sin(tone_ph)          (msg_src = 0: test tone at fm)
+//                    = mic - DC              (msg_src = 1: microphone audio)
 //   FM        out    = A * sin(acc),  acc += fc + dev*m   (frequency follows m)
 //   PM        out    = A * sin(acc + beta*m)              (phase follows m)
 //   AM        out    = A * (1 + mu*m)/2 * sin(acc)        (amplitude follows m)
-//   BYPASS    out    = A * sin(acc)                       (plain carrier)
+//   CARRIER   out    = A * sin(acc)                       (carrier only, no modulation)
 //
 // A = amp_pct %, beta = beta_x10 / 10 (PM, radians), mu = min(beta_x10/10, 1)
 // (AM depth), and every frequency is a 32-bit phase increment (f * 2^32 / fs)
 // from param_ctrl. FM's index is set by dev_fcw = beta * fm (param_ctrl).
+//
+// Mic message: the 12-bit mic sample (2048 = silence) has its DC offset
+// removed by a running average (time constant 256 samples = 5.3 ms, ~30 Hz
+// high-pass) and is scaled to the same +-2^20 range as the test tone
+// (MIC_SHIFT = 9: full-scale mic = +-1.0; each +1 doubles the gain, clipped).
+// In mic mode the FM peak deviation is still dev_fcw (beta * fm) at full-scale
+// mic, so fm acts as a deviation scale; PM uses beta, AM uses mu as for the tone.
 //
 // One cordic_core is time-shared: first for the message sine, then for the
 // carrier. 42 of the 667 clocks per sample are used.
@@ -38,7 +46,8 @@
 // =============================================================================
 
 module cordic_mod #(
-    parameter [31:0] FM_LIMIT = 32'h6000_0000    // max |instantaneous FM increment|
+    parameter [31:0] FM_LIMIT  = 32'h6000_0000,  // max |instantaneous FM increment|
+    parameter integer MIC_SHIFT = 9              // mic gain: 9 = full-scale mic -> +-1.0
 )(
     input  wire        clk,            // 32 MHz
     input  wire        rst,            // synchronous, active high (sys_rst)
@@ -52,11 +61,15 @@ module cordic_mod #(
     input  wire [7:0]  beta_x10,       // modulation index x10 (PM beta, AM mu)
     input  wire [6:0]  amp_pct,        // output amplitude 0..100 %
 
+    // Message source
+    input  wire [11:0] mic_sample,     // mic audio, offset binary (2048 = silence)
+    input  wire        msg_src,        // 0 = internal test tone, 1 = microphone
+
     output reg  [11:0] sample_out,     // to the DAC (mod_audio_data)
     output reg         out_valid       // 1-cycle pulse when sample_out updates
 );
 
-    localparam [1:0] M_FM = 2'b00, M_PM = 2'b01, M_AM = 2'b10, M_BYP = 2'b11;
+    localparam [1:0] M_FM = 2'b00, M_PM = 2'b01, M_AM = 2'b10;   // 2'b11 = carrier only
 
     // -------------------------------------------------------------------------
     // Fixed-point scaling (CORDIC peak = K * x0, K = 1.64676)
@@ -102,10 +115,22 @@ module cordic_mod #(
 
     // Shadowed parameters
     reg [1:0]  mode_s = M_FM;
+    reg        src_s  = 1'b0;          // message source for this sample
     reg [31:0] fc_s   = 0, fm_s = 0, dev_s = 0;
     reg [18:0] beta_pm_s = 0;          // beta_x10 * 1043          (<= 208,600)
     reg [16:0] beta_am_s = 0;          // min(beta_x10,10) * 6554  (<= 65,540)
     reg [19:0] amp_x0_s  = 0;          // amp_pct * 6352           (<= 635,200)
+
+    // Mic DC removal: mic_avg = 256 * running mean of the mic sample
+    reg signed [21:0] mic_avg = 22'sd2048 <<< 8;
+    reg signed [13:0] mic_ac  = 0;     // mic - mean, ~ +-2048 (AC audio)
+    wire signed [13:0] mic_s     = $signed({2'b00, mic_sample});
+    wire signed [13:0] mic_ac_nx = mic_s - (mic_avg >>> 8);
+    // Scale to +-2^20 and clip (same range as the test-tone sine)
+    wire signed [35:0] mic_big = $signed(mic_ac) <<< MIC_SHIFT;
+    wire signed [21:0] mic_m   = (mic_big >  36'sd1048576) ?  22'sd1048576 :
+                                 (mic_big < -36'sd1048576) ? -22'sd1048576 :
+                                  mic_big[21:0];
 
     // Phase accumulators (32-bit, wrap = one full turn)
     reg [31:0] acc     = 0;            // carrier phase
@@ -156,6 +181,8 @@ module cordic_mod #(
             c_start    <= 1'b0;
             acc        <= 0;
             tone_ph    <= 0;
+            mic_avg    <= 22'sd2048 <<< 8;
+            mic_ac     <= 0;
             sample_out <= 12'd2048;
             out_valid  <= 1'b0;
         end else begin
@@ -166,6 +193,10 @@ module cordic_mod #(
                 // -------------------------------------------------------------
                 S_IDLE: if (tick) begin
                     mode_s    <= mode;
+                    src_s     <= msg_src;
+                    // mic: remove DC (running mean), keep the AC part
+                    mic_ac    <= mic_ac_nx;
+                    mic_avg   <= mic_avg + mic_ac_nx;     // mean += (x - mean) / 256
                     fc_s      <= fc_fcw;
                     fm_s      <= fm_fcw;
                     dev_s     <= dev_fcw;
@@ -181,7 +212,7 @@ module cordic_mod #(
 
                 // -------------------------------------------------------------
                 S_TONE: if (c_done) begin
-                    m       <= c_sin;
+                    m       <= src_s ? mic_m : c_sin;     // mic or test tone
                     tone_ph <= tone_ph + fm_s;
                     state   <= S_MUL;
                 end

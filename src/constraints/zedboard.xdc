@@ -53,6 +53,11 @@ set_false_path -from [get_ports rst]
 set_property PACKAGE_PIN M15        [get_ports da2_func]
 set_property IOSTANDARD LVCMOS33    [get_ports da2_func]
 
+# Switch SW1 mapped to msg_src_sw (0 = test tone, 1 = microphone)
+set_property PACKAGE_PIN G22        [get_ports msg_src_sw]
+set_property IOSTANDARD LVCMOS33    [get_ports msg_src_sw]
+set_false_path -from [get_ports msg_src_sw]
+
 # Switch SW0 mapped to led_func
 set_property PACKAGE_PIN F22        [get_ports led_func]
 set_property IOSTANDARD LVCMOS33    [get_ports led_func]

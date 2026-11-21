@@ -2,8 +2,9 @@ module top (
     input wire sys_clk,     // 100 MHz PL clock
     input wire rst,         // system reset
 
-    input wire da2_func,        // Select DA2 function -> SW7
+    input wire da2_func,        // DA2 channel swap -> SW7 (0: A = modulated, B = mic; 1: A = mic, B = modulated)
     input wire led_func,        // Select LED function -> SW0
+    input wire msg_src_sw,      // Message source -> SW1 (0 = test tone, 1 = microphone)
     output wire [7:0] leds,     // LEDs -> LD0 - LD7
 
     // PMOD JA – Digilent PMOD KYPD
@@ -98,14 +99,18 @@ module top (
         end
     end
 
-    wire [11:0] da_audio_data;      // 12-bit audio sample for DA2
+    // DA2 channels: one carries the modulated output, the other the original mic,
+    // so both can be heard / scoped side by side. SW7 swaps which is on A (VOUTA).
+    wire [11:0] da_audio_a;
+    wire [11:0] da_audio_b;
 
     // Instantiate DA2 SPI Transmitter
     pmod_da2_spi da2_spi_inst (
         .clk(clk_32mhz),
         .rst(sys_rst),
         .start_transmit(data_valid),
-        .audio_data(da_audio_data),
+        .audio_a(da_audio_a),
+        .audio_b(da_audio_b),
         .sync(da_sync_n),
         .sclk(da_sclk),
         .mosi1(da_mosi1),
@@ -114,7 +119,8 @@ module top (
 
     wire [11:0] mod_audio_data;             // Modulated audio from cordic_mod (below)
 
-    assign da_audio_data = da2_func ? mic_audio_data : mod_audio_data;   // Pass through MIC3 audio or play modulated audio 
+    assign da_audio_a = da2_func ? mic_audio_data : mod_audio_data;
+    assign da_audio_b = da2_func ? mod_audio_data : mic_audio_data;
 
     wire [7:0] vu_level;                    // 8-bit audio level output from VU meter
 
@@ -190,8 +196,13 @@ module top (
         .kp_leds(kp_leds)
     );
 
+    // Message-source switch (SW1): asynchronous, so synchronise it first
+    (* ASYNC_REG = "TRUE" *) reg [1:0] msg_src_sync = 2'b00;
+    always @(posedge clk_32mhz) msg_src_sync <= {msg_src_sync[0], msg_src_sw};
+    wire msg_src = msg_src_sync[1];
+
     // ==========================================
-    // CORDIC modulator (FM / PM / AM / bypass)
+    // CORDIC modulator (FM / PM / AM / carrier only)
     // ==========================================
     // Computes one sample per data_valid; the result is registered and read by
     // the DAC on the next data_valid (one sample of latency).
@@ -205,6 +216,8 @@ module top (
         .dev_fcw(dev_fcw),
         .beta_x10(beta_x10),
         .amp_pct(amp_pct),
+        .mic_sample(mic_audio_data),
+        .msg_src(msg_src),
         .sample_out(mod_audio_data),
         .out_valid()
     );

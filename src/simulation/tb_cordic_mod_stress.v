@@ -18,7 +18,7 @@ module tb_cordic_mod_stress;
     reg [1:0] mode = 0; reg [31:0] fc_fcw = 0, fm_fcw = 0, dev_fcw = 0; reg [7:0] beta_x10 = 0; reg [6:0] amp_pct = 0;
     wire [11:0] sample_out; wire out_valid;
     cordic_mod dut(.clk(clk), .rst(rst), .tick(tick), .mode(mode), .fc_fcw(fc_fcw), .fm_fcw(fm_fcw), .dev_fcw(dev_fcw),
-                   .beta_x10(beta_x10), .amp_pct(amp_pct), .sample_out(sample_out), .out_valid(out_valid));
+                   .beta_x10(beta_x10), .amp_pct(amp_pct), .mic_sample(12'd2048), .msg_src(1'b0), .sample_out(sample_out), .out_valid(out_valid));
     integer fd, seed = 12345, i, k, per, phase;
     integer wide; // 0: param_ctrl ranges, 1: full input-width ranges
     // log accepted ticks / outputs / resets as seen by the DUT at the clock edge

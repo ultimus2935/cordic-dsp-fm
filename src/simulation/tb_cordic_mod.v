@@ -40,7 +40,7 @@ module tb_cordic_mod;
     cordic_mod dut (
         .clk(clk), .rst(rst), .tick(tick),
         .mode(mode), .fc_fcw(fc_fcw), .fm_fcw(fm_fcw), .dev_fcw(dev_fcw),
-        .beta_x10(beta_x10), .amp_pct(amp_pct),
+        .beta_x10(beta_x10), .amp_pct(amp_pct), .mic_sample(12'd2048), .msg_src(1'b0),
         .sample_out(sample_out), .out_valid(out_valid)
     );
 
