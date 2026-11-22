@@ -8,19 +8,23 @@ set_property PACKAGE_PIN R18        [get_ports rst]
 set_property IOSTANDARD  LVCMOS33   [get_ports rst]
 
 # PMOD Header JA – Keypad columns (active LOW, inactive columns high-Z)
-# JA1=COL1 (col[0])  JA2=COL2 (col[1])  JA3=COL3 (col[2])  JA4=COL4 (col[3])
-set_property PACKAGE_PIN Y11        [get_ports {kp_col[0]}]
-set_property PACKAGE_PIN AA11       [get_ports {kp_col[1]}]
-set_property PACKAGE_PIN Y10        [get_ports {kp_col[2]}]
-set_property PACKAGE_PIN AA9        [get_ports {kp_col[3]}]
+# Digilent PMOD KYPD: Pin 1=COL4, Pin 2=COL3, Pin 3=COL2, Pin 4=COL1
+# ZedBoard JA: JA1=Y11, JA2=AA11, JA3=Y10, JA4=AA9
+# Mapping: kp_col[0]=COL1 (JA4), kp_col[1]=COL2 (JA3), kp_col[2]=COL3 (JA2), kp_col[3]=COL4 (JA1)
+set_property PACKAGE_PIN AA9        [get_ports {kp_col[0]}]
+set_property PACKAGE_PIN Y10        [get_ports {kp_col[1]}]
+set_property PACKAGE_PIN AA11       [get_ports {kp_col[2]}]
+set_property PACKAGE_PIN Y11        [get_ports {kp_col[3]}]
 set_property IOSTANDARD  LVCMOS33   [get_ports {kp_col[*]}]
 
 # PMOD Header JA – Keypad rows (active LOW, inputs with pull-ups)
-# JA7=ROW1 (row[0])  JA8=ROW2 (row[1])  JA9=ROW3 (row[2])  JA10=ROW4 (row[3])
-set_property PACKAGE_PIN AB11       [get_ports {kp_row[0]}]
-set_property PACKAGE_PIN AB10       [get_ports {kp_row[1]}]
-set_property PACKAGE_PIN AB9        [get_ports {kp_row[2]}]
-set_property PACKAGE_PIN AA8        [get_ports {kp_row[3]}]
+# Digilent PMOD KYPD: Pin 7=ROW4, Pin 8=ROW3, Pin 9=ROW2, Pin 10=ROW1
+# ZedBoard JA: JA7=AB11, JA8=AB10, JA9=AB9, JA10=AA8
+# Mapping: kp_row[0]=ROW1 (JA10), kp_row[1]=ROW2 (JA9), kp_row[2]=ROW3 (JA8), kp_row[3]=ROW4 (JA7)
+set_property PACKAGE_PIN AA8        [get_ports {kp_row[0]}]
+set_property PACKAGE_PIN AB9        [get_ports {kp_row[1]}]
+set_property PACKAGE_PIN AB10       [get_ports {kp_row[2]}]
+set_property PACKAGE_PIN AB11       [get_ports {kp_row[3]}]
 set_property IOSTANDARD  LVCMOS33   [get_ports {kp_row[*]}]
 set_property PULLUP      true       [get_ports {kp_row[*]}]
 
