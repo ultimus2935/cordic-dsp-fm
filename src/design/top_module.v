@@ -15,8 +15,8 @@ module top (
     // PMOD JC – Digilent PMOD DA2
     output wire da_sync_n,  // Chip Select -> JC1 (active low)
     output wire da_sclk,    // Serial Clock -> JC4
-    output wire da_mosi1,   // Serial Data (MOSI) -> JC3
-    output wire da_mosi2,   // Serial Data (MOSI) -> JC2
+    output wire da_mosi1,   // Serial Data (MOSI) -> JC2 (VOUTA)
+    output wire da_mosi2,   // Serial Data (MOSI) -> JC3 (VOUTB)
 
     // PMOD JD – Digilent PMOD Mic
     output wire mic_cs_n,   // Chip Select -> JD1 (active low)
@@ -100,6 +100,11 @@ module top (
         end
     end
 
+    wire [11:0] mod_audio_data;             // Modulated audio from cordic_mod (below)
+    wire        mod_out_valid;              // 1-cycle pulse when mod_audio_data updates
+    wire [11:0] ram_rd_orig;
+    wire [11:0] ram_rd_mod;
+
     // DA2 channels: one carries the modulated output, the other the original mic,
     // so both can be heard / scoped side by side. SW7 swaps which is on A (VOUTA).
     wire [11:0] da_audio_a;
@@ -109,7 +114,7 @@ module top (
     pmod_da2_spi da2_spi_inst (
         .clk(clk_32mhz),
         .rst(sys_rst),
-        .start_transmit(data_valid),
+        .start_transmit(mod_out_valid),
         .audio_a(da_audio_a),
         .audio_b(da_audio_b),
         .sync(da_sync_n),
@@ -117,10 +122,6 @@ module top (
         .mosi1(da_mosi1),
         .mosi2(da_mosi2)
     );
-
-    wire [11:0] mod_audio_data;             // Modulated audio from cordic_mod (below)
-    wire [11:0] ram_rd_orig;
-    wire [11:0] ram_rd_mod;
 
     // Freeze switch (SW2): asynchronous, so synchronise it first
     (* ASYNC_REG = "TRUE" *) reg [1:0] freeze_sync = 2'b00;
@@ -140,12 +141,34 @@ module top (
 
     wire [7:0] vu_level;                    // 8-bit audio level output from VU meter
 
+    // ==========================================
+    // VU Meter DC Baseline Tracking
+    // ==========================================
+    // Real microphones have DC offsets that vary from unit to unit (not exactly
+    // 2048). This running-average filter tracks the actual baseline so the VU
+    // meter responds only to AC audio, preventing LEDs from sticking in silence.
+    // Time constant: 256 samples at 48 kHz ≈ 5.3 ms (~30 Hz high-pass).
+    reg signed [21:0] vu_dc_avg = 22'sd524288;  // 2048 * 256
+
+    always @(posedge clk_32mhz) begin
+        if (sys_rst)
+            vu_dc_avg <= 22'sd524288;
+        else if (data_valid)
+            vu_dc_avg <= vu_dc_avg + ($signed({10'b0, mic_audio_data}) - (vu_dc_avg >>> 8));
+    end
+
+    // Re-centre audio around 2048 regardless of actual DC offset
+    wire signed [13:0] vu_ac_raw = $signed({2'b00, mic_audio_data}) - $signed(vu_dc_avg[21:8]);
+    wire [11:0] vu_audio = (vu_ac_raw >  14'sd2047) ? 12'd4095 :
+                           (vu_ac_raw < -14'sd2048) ? 12'd0    :
+                           $unsigned(vu_ac_raw[11:0]) + 12'd2048;
+
     // Instantiate VU Meter
     vu_meter vu_meter_inst (
         .clk(clk_32mhz),
         .rst(sys_rst),
         .sample_tick(data_valid),      
-        .audio_data(mic_audio_data),
+        .audio_data(vu_audio),
         .vu_level(vu_level)
     );
 
@@ -235,7 +258,7 @@ module top (
         .mic_sample(mic_audio_data),
         .msg_src(msg_src),
         .sample_out(mod_audio_data),
-        .out_valid()
+        .out_valid(mod_out_valid)
     );
 
     // ==========================================
@@ -251,7 +274,7 @@ module top (
     always @(posedge clk_32mhz) begin
         if (sys_rst) begin
             ram_playback_ptr <= 11'd0;
-        end else if (data_valid) begin
+        end else if (mod_out_valid) begin
             if (!freeze_active)
                 ram_playback_ptr <= ram_wr_addr;
             else
@@ -266,7 +289,7 @@ module top (
     ) audio_ram_inst (
         .clk(clk_32mhz),
         .rst(sys_rst),
-        .sample_tick(data_valid),
+        .sample_tick(mod_out_valid),
         .freeze(freeze_active),
         .orig_sample(mic_audio_data),
         .mod_sample(mod_audio_data),
