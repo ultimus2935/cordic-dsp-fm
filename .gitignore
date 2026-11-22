@@ -1,3 +1,14 @@
 /src_test
 /working_dir
 /documents
+/tex
+*.log
+*.jou
+.Xil/
+*.vcd
+*.wdb
+*.pb
+cordic_mod_out.txt
+xsim.dir/
+*.olauth
+/.agents

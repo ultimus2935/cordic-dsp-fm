@@ -34,7 +34,7 @@ module tb_vu_meter();
     // 32,000,000 / 48,000 = ~666 clock cycles per tick
     integer tick_counter = 0;
     always @(posedge clk) begin
-        if (tick_counter >= 666) begin
+        if (tick_counter >= 666) begin   // 667-cycle period, same as top_module
             tick_counter <= 0;
             sample_tick <= 1;
         end else begin
