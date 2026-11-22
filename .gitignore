@@ -11,3 +11,4 @@
 cordic_mod_out.txt
 xsim.dir/
 *.olauth
+/.agents
